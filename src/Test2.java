@@ -8,7 +8,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class Test2 {
 
-    // pour afficher les héros et les ennemis au début
     private static void displayStartup(List<Personnage> coteHeros, List<Personnage> ennemis) {
         System.out.println("=== HÉROS & ALLIÉS (switch possibles) ===");
         for (Personnage p : coteHeros) {
@@ -21,7 +20,6 @@ public class Test2 {
         System.out.println();
     }
 
-    // Affiche les stats finales du combat detaillé
     private static void printEndStats(List<Personnage> participants) {
         if (participants.isEmpty()) return;
 
@@ -45,8 +43,8 @@ public class Test2 {
             System.out.println("> meilleur TANK : " + mostDamageTaken.getName() + " (" + mostDamageTaken.getTotalDamageTaken() + ")\n");
     }
 
-    // Détermine qui commence à attaquer
-    private static void firstToAttack(Personnage a, Personnage b) {
+
+    private static void premierAttaque(Personnage a, Personnage b) {
         if (a.getSpeed() >= b.getSpeed()) {
             a.setStart(true);
             b.setStart(false);
@@ -116,8 +114,8 @@ public class Test2 {
     }
 
     // Menu pour utiliser les objets (Pomme, Rage, Bouclier)
-    private static boolean handleItemMenu(Scanner scan, Personnage user, List<Personnage> roster,
-                                          Map<Personnage,Integer> maxHp, Map<Personnage, Buff> buffs) {
+    private static boolean menuObjets(Scanner scan, Personnage user, List<Personnage> roster,
+                                      Map<Personnage,Integer> maxHp, Map<Personnage, Buff> buffs) {
         try {
             List<String> items = Arrays.asList("Pomme", "Rage", "Bouclier");
             System.out.println("Objets :");
@@ -155,13 +153,13 @@ public class Test2 {
     }
 
 
-    private static void parallelMiniSkirmish(List<Personnage> roster,
-                                             Personnage activeHero,
-                                             Personnage currentEnemy,
-                                             Personnage[] allEnemies,
-                                             Map<Personnage, Buff> buffs,
-                                             Random rng) {
-        // constituer bancs
+    private static void combatParallele(List<Personnage> roster,
+                                        Personnage activeHero,
+                                        Personnage currentEnemy,
+                                        Personnage[] allEnemies,
+                                        Map<Personnage, Buff> buffs,
+                                        Random rng) {
+
         List<Personnage> benchAllies = new ArrayList<>();
         for (Personnage a : roster) if (a != activeHero && a.getHp() > 0) benchAllies.add(a);
 
@@ -169,7 +167,6 @@ public class Test2 {
         for (Personnage e : allEnemies) if (e != currentEnemy && e.getHp() > 0) benchFoes.add(e);
 
         if (benchAllies.isEmpty() || benchFoes.isEmpty()) return;
-
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         Callable<Void> allyTask = () -> {
@@ -196,7 +193,7 @@ public class Test2 {
         }
     }
 
-    // Régénération automatique hors combat (+5 HP toutes les 5s)
+    // Régénération automatique hors combat
     private static ScheduledFuture<?> startIdleRegen(ScheduledExecutorService scheduler,
                                                      List<Personnage> heroes,
                                                      Map<Personnage,Integer> maxHp) {
@@ -225,7 +222,7 @@ public class Test2 {
 
         List<Personnage> roster = new ArrayList<>(Arrays.asList(johan, maelle, gustave));
 
-        // Items dans l'inventaire
+        // Items
         Item.giveItem(johan, "Pomme", 3);
         Item.giveItem(johan, "Rage", 1);
         Item.giveItem(johan, "Bouclier", 1);
@@ -238,7 +235,7 @@ public class Test2 {
                 new Ennemi("Bandit",  140, 35, 45, 35, 15, false)
         };
 
-        // HP max + buffs
+
         Map<Personnage,Integer> maxHp = new IdentityHashMap<>();
         for (Personnage p : roster) maxHp.put(p, p.getHp());
         for (Personnage e : adversairesArray) maxHp.put(e, e.getHp());
@@ -256,7 +253,7 @@ public class Test2 {
             if (alive(roster).isEmpty()) break;
 
             System.out.println("=== DUEL === " + active.getName() + " vs " + enemy.getName() + " [" + enemy.getClass().getSimpleName() + "]\n");
-            firstToAttack(active, enemy);
+            premierAttaque(active, enemy);
             boolean roundJustEnded = false;
 
             while (enemy.getHp() > 0 && !alive(roster).isEmpty()) {
@@ -274,7 +271,7 @@ public class Test2 {
                             break;
                         }
                     } else if (input == 2) {
-                        consumedTurn = handleItemMenu(scan, active, roster, maxHp, buffs);
+                        consumedTurn = menuObjets(scan, active, roster, maxHp, buffs);
                         System.out.println();
                     } else if (input == 3) {
                         Personnage newActive = chooseFighter(scan, roster, active);
@@ -296,7 +293,7 @@ public class Test2 {
                         roundJustEnded = false;
 
                         // attaque parallèle entre bancs
-                        parallelMiniSkirmish(roster, active, enemy, adversairesArray, buffs, rng);
+                        combatParallele(roster, active, enemy, adversairesArray, buffs, rng);
 
                     } else {
                         continue;

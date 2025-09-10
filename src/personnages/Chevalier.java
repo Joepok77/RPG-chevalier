@@ -18,5 +18,4 @@ public class Chevalier extends Personnage {
                 "\nStart : " + this.isStart() + "\n";
     }
 
-    // (garde l'attaque par défaut de Personnage ou spécialise ici)
 }

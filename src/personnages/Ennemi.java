@@ -20,5 +20,4 @@ public class Ennemi extends Personnage {
                 "\nStart : " + this.isStart() + "\n";
     }
 
-    // tu peux surcharger performAttack ici si tu veux un comportement différent
 }

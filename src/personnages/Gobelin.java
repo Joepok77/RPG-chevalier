@@ -12,7 +12,6 @@ public class Gobelin extends Ennemi {
 
     @Override
     public boolean dodge() {
-        // petit bonus d’esquive
         int base = Math.max(0, Math.min(50, getLuck() / 2));
         int bonus = 5;
         return Math.random() * 100 < (base + bonus);
