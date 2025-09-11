@@ -4,10 +4,33 @@ import personnages.Personnage;
 
 import java.util.Iterator;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.Collections;
 
 public class Item {
     private String name;
     private String description;
+
+    private static final Map<String, Integer> teamInventory = new TreeMap<>();
+
+    public static Map<String, Integer> getTeamInventory() {
+        return Collections.unmodifiableMap(teamInventory);
+    }
+
+    public static int getQty(String itemName) {
+        return teamInventory.getOrDefault(itemName, 0);
+    }
+
+    public static void giveItem(String itemName, int qty) {
+        if (qty <= 0) return;
+        int currentQty = teamInventory.getOrDefault(itemName, 0);
+        teamInventory.put(itemName, currentQty + qty);
+    }
+
+    public static void giveItem(Personnage ignoredUser, String itemName, int qty) {
+        // On ignore le "porteur" et on alimente le sac partagé
+        giveItem(itemName, qty);
+    }
 
     public Item(String name, String description) {
         this.name = name;
@@ -52,21 +75,17 @@ public class Item {
         }
     }
 
-    public static void giveItem(Personnage p, String itemName, int qty) {
-        if (qty <= 0) return;
-        int currentQty = p.getInventory().getOrDefault(itemName, 0);
-        p.getInventory().put(itemName, currentQty + qty);
-    }
+    // Consommation des objets
 
-    public static boolean useApple(Personnage user, Personnage target, Map<Personnage, Integer> maxHp) {
-        if (target.isBusy()) {
-            System.out.println("⏳ " + target.getName() + " est en action : soin impossible pour l'instant.");
+    public static boolean useApple(Personnage target, Map<Personnage, Integer> maxHp) {
+        int availableApples = teamInventory.getOrDefault("Pomme", 0);
+        if (availableApples == 0) {
+            System.out.println("❌ Pas de Pomme dans l'inventaire d'équipe.");
             return false;
         }
 
-        int availableApples = user.getInventory().getOrDefault("Pomme", 0);
-        if (availableApples == 0) {
-            System.out.println("❌ Pas de Pomme dans l'inventaire.");
+        if (target.isBusy()) {
+            System.out.println("⏳ " + target.getName() + " est en action : soin impossible pour l'instant.");
             return false;
         }
 
@@ -78,19 +97,19 @@ public class Item {
             return false;
         }
 
-        user.getInventory().put("Pomme", availableApples - 1);
+        teamInventory.put("Pomme", availableApples - 1);
         System.out.println("🍎 " + target.getName() + " récupère des HP (" + target.getHp() + "/" + hpCap + ")");
         return true;
     }
 
-    public static boolean useRage(Personnage user, Personnage target, Map<Personnage, Buff> buffs) {
-        int availableRage = user.getInventory().getOrDefault("Rage", 0);
+    public static boolean useRage(Personnage target, Map<Personnage, Buff> buffs) {
+        int availableRage = teamInventory.getOrDefault("Rage", 0);
         if (availableRage == 0) {
-            System.out.println("❌ Vous n'avez pas de Rage.");
+            System.out.println("❌ Pas de Rage dans l'inventaire d'équipe.");
             return false;
         }
 
-        user.getInventory().put("Rage", availableRage - 1);
+        teamInventory.put("Rage", availableRage - 1);
         Buff buff = getBuff(buffs, target);
         buff.atkBonus += 20;
         buff.turns = Math.max(buff.turns, 3);
@@ -99,19 +118,32 @@ public class Item {
         return true;
     }
 
-    public static boolean useShield(Personnage user, Personnage target, Map<Personnage, Buff> buffs) {
-        int availableShields = user.getInventory().getOrDefault("Bouclier", 0);
+    public static boolean useShield(Personnage target, Map<Personnage, Buff> buffs) {
+        int availableShields = teamInventory.getOrDefault("Bouclier", 0);
         if (availableShields == 0) {
-            System.out.println("❌ Vous n'avez pas de Bouclier.");
+            System.out.println("❌ Pas de Bouclier dans l'inventaire d'équipe.");
             return false;
         }
 
-        user.getInventory().put("Bouclier", availableShields - 1);
+        teamInventory.put("Bouclier", availableShields - 1);
         Buff buff = getBuff(buffs, target);
         buff.defBonus += 20;
         buff.turns = Math.max(buff.turns, 3);
 
         System.out.println("🛡️ " + target.getName() + " gagne +20 DEF pendant 3 tours !");
         return true;
+    }
+
+    public static boolean useApple(Personnage userIgnored, Personnage target, Map<Personnage, Integer> maxHp) {
+        // on ignore "user" et on consomme dans le sac partagé
+        return useApple(target, maxHp);
+    }
+
+    public static boolean useRage(Personnage userIgnored, Personnage target, Map<Personnage, Buff> buffs) {
+        return useRage(target, buffs);
+    }
+
+    public static boolean useShield(Personnage userIgnored, Personnage target, Map<Personnage, Buff> buffs) {
+        return useShield(target, buffs);
     }
 }

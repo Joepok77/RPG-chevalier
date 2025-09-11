@@ -73,8 +73,10 @@ public abstract class Personnage implements IPersonnage {
         try {
             if (defender.dodge()) {
                 System.out.println(defender.getName() + " a esquivé !");
+                pause(350);
                 return;
             }
+            pause(350);
 
             int damage = Math.max(1, this.atk - defender.defense / 2);
             defender.receiveDamage(damage);
@@ -83,6 +85,7 @@ public abstract class Personnage implements IPersonnage {
             defender.updateDefenseStats(damage);
 
             System.out.println(this.name + " attaque " + defender.name + " et inflige " + damage + " dégâts !");
+            pause(350); // pour lisibilite des attaques etc
         } finally {
             setBusy(false);
         }
@@ -193,5 +196,14 @@ public abstract class Personnage implements IPersonnage {
                 "\nChance : " + luck +
                 "\nStart : " + start +
                 "\nInventaire : " + inventory;
+    }
+
+
+    private void pause(int millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
     }
 }

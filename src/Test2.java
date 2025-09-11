@@ -7,7 +7,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Test2 {
-
+ // Affichage des heros/alliés ou ennemis
     private static void displayStartup(List<Personnage> coteHeros, List<Personnage> ennemis) {
         System.out.println("=== HÉROS & ALLIÉS (switch possibles) ===");
         for (Personnage p : coteHeros) {
@@ -16,6 +16,17 @@ public class Test2 {
         System.out.println("=== ENNEMIS  ===");
         for (Personnage p : ennemis) {
             System.out.println(" - " + p.getName().toLowerCase() + " (" + p.getHp() + " HP) [" + p.getClass().getSimpleName() + "]");
+        }
+        System.out.println();
+
+        // Affichage de l'inventaire d'équipe
+        System.out.println("=== INVENTAIRE D'ÉQUIPE ===");
+        if (Item.getTeamInventory().isEmpty()) {
+            System.out.println(" (vide)");
+        } else {
+            Item.getTeamInventory().forEach((nom, qty) ->
+                    System.out.println(" - " + nom + " : " + qty)
+            );
         }
         System.out.println();
     }
@@ -43,6 +54,7 @@ public class Test2 {
             System.out.println("> meilleur TANK : " + mostDamageTaken.getName() + " (" + mostDamageTaken.getTotalDamageTaken() + ")\n");
     }
 
+    // Lecture sécurisée des entrées joueur dans le terminal
     private static int readInt(Scanner sc, int... allowed) {
         while (true) {
             try {
@@ -74,6 +86,7 @@ public class Test2 {
         defender.setDefense(def0);
     }
 
+    // Permet de changer de héros actif ssi il est toujours en vie
     private static Personnage chooseFighter(Scanner scan, List<Personnage> roster, Personnage active) {
         System.out.println("Choisir le combattant (remplace " + active.getName() + ") :");
         for (int i = 0; i < roster.size(); i++) {
@@ -100,38 +113,53 @@ public class Test2 {
         return chosen;
     }
 
+    //  sac partagé avc tout les alliés
     private static boolean menuObjets(Scanner scan, Personnage user, List<Personnage> roster,
                                       Map<Personnage,Integer> maxHp, Map<Personnage, Buff> buffs) {
         try {
             List<String> items = Arrays.asList("Pomme", "Rage", "Bouclier");
-            System.out.println("Objets :");
+            System.out.println("Objets de l'équipe (sac partagé) :");
             for (int i = 0; i < items.size(); i++) {
                 String it = items.get(i);
-                int q = user.getInventory().getOrDefault(it, 0);
+                int q = Item.getQty(it);            // 🔹 quantité depuis le sac commun
                 System.out.println("  " + (i + 1) + " - " + it + " (x" + q + ")");
             }
             System.out.println("  0 - Annuler");
             System.out.print("> ");
             int ch = readInt(scan);
             if (ch == 0) return false;
-            if (ch == 1) return Item.useApple(user, user, maxHp); // soin sur soi
 
-            if (ch == 2 || ch == 3) {
-                List<Personnage> options = new ArrayList<>(roster);
-                options.removeIf(p -> p.getHp() <= 0);
-                System.out.println("Cible du buff :");
+            // Sélection d'une cible qui n'est pas ko pour tous les objets
+            List<Personnage> options = new ArrayList<>(roster);
+            options.removeIf(p -> p.getHp() <= 0);
+            if (options.isEmpty()) {
+                System.out.println("❌ Aucun allié valide.");
+                return false;
+            }
+
+            Personnage target = user;
+            if (ch == 1 || ch == 2 || ch == 3) {
+                System.out.println("Choisir la cible :");
                 for (int i = 0; i < options.size(); i++) {
                     Personnage p = options.get(i);
                     System.out.println("  " + (i + 1) + " - " + p.getName() + " (" + p.getHp() + " HP)");
                 }
                 System.out.print("> ");
                 int idx = readInt(scan);
-                if (idx < 1 || idx > options.size()) return false;
-                Personnage target = options.get(idx - 1);
-                return (ch == 2) ? Item.useRage(user, target, buffs) : Item.useShield(user, target, buffs);
+                if (idx >= 1 && idx <= options.size()) target = options.get(idx - 1);
             }
-            System.out.println("Choix invalide.");
-            return false;
+
+            switch (ch) {
+                case 1:
+                    return Item.useApple(target, maxHp);
+                case 2:
+                    return Item.useRage(target, buffs);
+                case 3:
+                    return Item.useShield(target, buffs);
+                default:
+                    System.out.println("Choix invalide.");
+                    return false;
+            }
         } catch (Exception e) {
             System.out.println("⚠️ Erreur lors de l'utilisation d'un objet: " + e.getMessage());
             return false;
@@ -178,6 +206,7 @@ public class Test2 {
         }
     }
 
+    // Régénération automatique hors combat
     private static ScheduledFuture<?> startIdleRegen(ScheduledExecutorService scheduler,
                                                      List<Personnage> heroes,
                                                      Map<Personnage,Integer> maxHp) {
@@ -196,20 +225,25 @@ public class Test2 {
         Scanner scan = new Scanner(System.in);
         Random rng = ThreadLocalRandom.current();
 
+        // Création du héros principal
         Chevalier johan = new Chevalier("Johan", 300, 30, 100, 50, 40, true);
+
+        // Alliés
         Personnage maelle  = new Mage("Maelle", 120, 30, 85, 45, 30, false);
         Personnage gustave = new Guerrier("Gustave", 180, 55, 80, 35, 20, false);
 
         List<Personnage> roster = new ArrayList<>(Arrays.asList(johan, maelle, gustave));
 
-        Item.giveItem(johan, "Pomme", 3);
-        Item.giveItem(johan, "Rage", 1);
-        Item.giveItem(johan, "Bouclier", 1);
+        // Items — utilisent maintenant le sac partagé via Item.giveItem(String,int)
+        Item.giveItem("Pomme", 3);
+        Item.giveItem("Rage", 1);
+        Item.giveItem("Bouclier", 1);
 
+        // Ennemis
         Personnage[] adversairesArray = new Personnage[] {
                 new Gobelin("Griblix", 100, 20, 35, 40, 10, false),
                 new Orc("Thrall",     220, 40, 70, 25, 10, false),
-                new Dragon("Smaug",   300, 80,85, 30, 15, false),
+                new Dragon("Smaug",   300, 80, 85, 30, 15, false),
                 new Ennemi("Bandit",  140, 35, 45, 35, 15, false)
         };
 
@@ -225,19 +259,21 @@ public class Test2 {
 
         Personnage active = johan;
 
+        // Boucle des combats 1v1
         for (Personnage enemy : adversairesArray) {
             if (alive(roster).isEmpty()) break;
 
             System.out.println("=== DUEL === " + active.getName() + " vs " + enemy.getName() + " [" + enemy.getClass().getSimpleName() + "]\n");
 
-            // 🔹 Utilisation de stream pour trier par vitesse
+
             List<Personnage> turnOrder = new ArrayList<>(roster);
             turnOrder.add(enemy);
-
             turnOrder.stream()
                     .sorted(Comparator.comparing(Personnage::getSpeed).reversed())
-                    .forEachOrdered(p -> System.out.println(p.getName() + " jouera avec une vitesse de " + p.getSpeed()));
+                    .forEachOrdered(p -> System.out.println(p.getName() + " jouera (SPEED " + p.getSpeed() + ")"));
+            System.out.println();
 
+            premierAttaque(active, enemy);
             boolean roundJustEnded = false;
 
             while (enemy.getHp() > 0 && !alive(roster).isEmpty()) {
@@ -255,7 +291,7 @@ public class Test2 {
                             break;
                         }
                     } else if (input == 2) {
-                        consumedTurn = menuObjets(scan, active, roster, maxHp, buffs);
+                        consumedTurn = menuObjets(scan, active, roster, maxHp, buffs); // 🔹 sac partagé
                         System.out.println();
                     } else if (input == 3) {
                         Personnage newActive = chooseFighter(scan, roster, active);
@@ -275,7 +311,10 @@ public class Test2 {
                         active.setStart(false);
                         enemy.setStart(true);
                         roundJustEnded = false;
+
+                        // attaque parallèle entre bancs
                         combatParallele(roster, active, enemy, adversairesArray, buffs, rng);
+
                     } else {
                         continue;
                     }
@@ -314,5 +353,15 @@ public class Test2 {
         printEndStats(participants);
 
         scheduler.shutdownNow();
+    }
+
+    private static void premierAttaque(Personnage a, Personnage b) {
+        if (a.getSpeed() >= b.getSpeed()) {
+            a.setStart(true);
+            b.setStart(false);
+        } else {
+            b.setStart(true);
+            a.setStart(false);
+        }
     }
 }
