@@ -43,18 +43,6 @@ public class Test2 {
             System.out.println("> meilleur TANK : " + mostDamageTaken.getName() + " (" + mostDamageTaken.getTotalDamageTaken() + ")\n");
     }
 
-
-    private static void premierAttaque(Personnage a, Personnage b) {
-        if (a.getSpeed() >= b.getSpeed()) {
-            a.setStart(true);
-            b.setStart(false);
-        } else {
-            b.setStart(true);
-            a.setStart(false);
-        }
-    }
-
-    // Lecture sécurisée des entrées joueur dans le terminal
     private static int readInt(Scanner sc, int... allowed) {
         while (true) {
             try {
@@ -86,7 +74,6 @@ public class Test2 {
         defender.setDefense(def0);
     }
 
-    // Permet de changer de héros actif ssi il est toujours en vie
     private static Personnage chooseFighter(Scanner scan, List<Personnage> roster, Personnage active) {
         System.out.println("Choisir le combattant (remplace " + active.getName() + ") :");
         for (int i = 0; i < roster.size(); i++) {
@@ -113,7 +100,6 @@ public class Test2 {
         return chosen;
     }
 
-    // Menu pour utiliser les objets (Pomme, Rage, Bouclier)
     private static boolean menuObjets(Scanner scan, Personnage user, List<Personnage> roster,
                                       Map<Personnage,Integer> maxHp, Map<Personnage, Buff> buffs) {
         try {
@@ -151,7 +137,6 @@ public class Test2 {
             return false;
         }
     }
-
 
     private static void combatParallele(List<Personnage> roster,
                                         Personnage activeHero,
@@ -193,7 +178,6 @@ public class Test2 {
         }
     }
 
-    // Régénération automatique hors combat
     private static ScheduledFuture<?> startIdleRegen(ScheduledExecutorService scheduler,
                                                      List<Personnage> heroes,
                                                      Map<Personnage,Integer> maxHp) {
@@ -208,33 +192,26 @@ public class Test2 {
         }, 0, 5, TimeUnit.SECONDS);
     }
 
-
     public static void main(String[] args) {
         Scanner scan = new Scanner(System.in);
         Random rng = ThreadLocalRandom.current();
 
-        // Création du héros principal
         Chevalier johan = new Chevalier("Johan", 300, 30, 100, 50, 40, true);
-
-        // Alliés
         Personnage maelle  = new Mage("Maelle", 120, 30, 85, 45, 30, false);
         Personnage gustave = new Guerrier("Gustave", 180, 55, 80, 35, 20, false);
 
         List<Personnage> roster = new ArrayList<>(Arrays.asList(johan, maelle, gustave));
 
-        // Items
         Item.giveItem(johan, "Pomme", 3);
         Item.giveItem(johan, "Rage", 1);
         Item.giveItem(johan, "Bouclier", 1);
 
-        // Ennemis
         Personnage[] adversairesArray = new Personnage[] {
                 new Gobelin("Griblix", 100, 20, 35, 40, 10, false),
                 new Orc("Thrall",     220, 40, 70, 25, 10, false),
                 new Dragon("Smaug",   300, 80,85, 30, 15, false),
                 new Ennemi("Bandit",  140, 35, 45, 35, 15, false)
         };
-
 
         Map<Personnage,Integer> maxHp = new IdentityHashMap<>();
         for (Personnage p : roster) maxHp.put(p, p.getHp());
@@ -248,12 +225,19 @@ public class Test2 {
 
         Personnage active = johan;
 
-        // Boucle des combats 1v1
         for (Personnage enemy : adversairesArray) {
             if (alive(roster).isEmpty()) break;
 
             System.out.println("=== DUEL === " + active.getName() + " vs " + enemy.getName() + " [" + enemy.getClass().getSimpleName() + "]\n");
-            premierAttaque(active, enemy);
+
+            // 🔹 Utilisation de stream pour trier par vitesse
+            List<Personnage> turnOrder = new ArrayList<>(roster);
+            turnOrder.add(enemy);
+
+            turnOrder.stream()
+                    .sorted(Comparator.comparing(Personnage::getSpeed).reversed())
+                    .forEachOrdered(p -> System.out.println(p.getName() + " jouera avec une vitesse de " + p.getSpeed()));
+
             boolean roundJustEnded = false;
 
             while (enemy.getHp() > 0 && !alive(roster).isEmpty()) {
@@ -291,10 +275,7 @@ public class Test2 {
                         active.setStart(false);
                         enemy.setStart(true);
                         roundJustEnded = false;
-
-                        // attaque parallèle entre bancs
                         combatParallele(roster, active, enemy, adversairesArray, buffs, rng);
-
                     } else {
                         continue;
                     }
